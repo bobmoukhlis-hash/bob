@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Future Jet Fighter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<script src="game.js"></script>
+
+</body>
+</html>
+body {
+    margin: 0;
+    overflow: hidden;
+    background: black;
+}
+
+#gameCanvas {
+    display: block;
+    margin: 0;
+    background: black;
+}
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Caricamento immagini
+const bg1 = new Image();
+bg1.src = "assets/sky.png";
+
+const bg2 = new Image();
+bg2.src = "assets/sky2.png";
+
+const playerImg = new Image();
+playerImg.src = "assets/jet.png";
+
+const enemyImg = new Image();
+enemyImg.src = "assets/enemy.png";
+
+const enemyImg2 = new Image();
+enemyImg2.src = "assets/enemy2.png";
+
+const bulletImg = new Image();
+bulletImg.src = "assets/bullet.png";
+
+// Scorrimento sfondo
+let bgY = 0;
+
+// Giocatore
+const player = {
+    x: canvas.width / 2 - 40,
+    y: canvas.height - 150,
+    width: 80,
+    height: 80,
+    speed: 10,
+    bullets: []
+};
+
+// Nemici
+let enemies = [];
+let spawnTimer = 0;
+
+// Input tasti
+let keys = {};
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
+
+// Sparo
+document.addEventListener("keydown", e => {
+    if (e.key === " ") {
+        shoot();
+    }
+});
+
+function shoot() {
+    player.bullets.push({
+        x: player.x + player.width / 2 - 5,
+        y: player.y,
+        width: 10,
+        height: 30
+    });
+}
+
+function spawnEnemy() {
+    const type = Math.random() > 0.5 ? enemyImg : enemyImg2;
+
+    enemies.push({
+        x: Math.random() * (canvas.width - 60),
+        y: -60,
+        width: 60,
+        height: 60,
+        speed: 3 + Math.random() * 3,
+        img: type
+    });
+}
+
+function update() {
+    // Sfondo
+    bgY += 2;
+    if (bgY >= canvas.height) bgY = 0;
+
+    // Movimento player
+    if (keys["ArrowLeft"]) player.x -= player.speed;
+    if (keys["ArrowRight"]) player.x += player.speed;
+    if (keys["ArrowUp"]) player.y -= player.speed;
+    if (keys["ArrowDown"]) player.y += player.speed;
+
+    // Limiti schermo
+    player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
+    player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
+
+    // Sparo
+    player.bullets.forEach((b, i) => {
+        b.y -= 10;
+        if (b.y < -50) player.bullets.splice(i, 1);
+    });
+
+    // Spawn nemici
+    spawnTimer++;
+    if (spawnTimer > 40) {
+        spawnEnemy();
+        spawnTimer = 0;
+    }
+
+    // Movimento nemici
+    enemies.forEach((e, i) => {
+        e.y += e.speed;
+
+        // Collisione con giocatore
+        if (collision(player, e)) {
+            alert("GAME OVER");
+            document.location.reload();
+        }
+
+        // Collisioni proiettili
+        player.bullets.forEach((b, j) => {
+            if (collision(b, e)) {
+                enemies.splice(i, 1);
+                player.bullets.splice(j, 1);
+            }
+        });
+
+        if (e.y > canvas.height + 60) enemies.splice(i, 1);
+    });
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+function draw() {
+    // Sfondo
+    ctx.drawImage(bg1, 0, bgY, canvas.width, canvas.height);
+    ctx.drawImage(bg2, 0, bgY - canvas.height, canvas.width, canvas.height);
+
+    // Giocatore
+    ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+
+    // Proiettili
+    player.bullets.forEach(b => {
+        ctx.drawImage(bulletImg, b.x, b.y, b.width, b.height);
+    });
+
+    // Nemici
+    enemies.forEach(e => {
+        ctx.drawImage(e.img, e.x, e.y, e.width, e.height);
+    });
+}
+
+function collision(a, b) {
+    return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+    );
+}
+
+update();
